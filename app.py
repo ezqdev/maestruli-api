@@ -1,24 +1,30 @@
 from flask import Flask, request, send_file, jsonify
 from pytube import YouTube
 import json
-
+from flask_cors import CORS
+import io
 import urllib.request
 from bs4 import BeautifulSoup
-import re
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-import requests
+import os
+#from selenium import webdriver
+#from selenium.webdriver.common.keys import Keys
+#import requests
 app = Flask(__name__)
+cors = CORS(app)
 
 
-@app.route("/download")
+@app.route("/download", methods=["POST"])
 def download():
-    yt = YouTube("https://www.youtube.com/watch?v=7ijMDQgvW0o")
-    #print(yt.streams.all())
-    music = yt.streams.filter(only_audio=True).get_by_itag('140').download()
-    return send_file(music, attachment_filename='song.mp4')
-    #return json.dumps({'response': music})
-
+    yt = YouTube(request.json['url'])
+    file_path = yt.streams.filter(only_audio=True).get_by_itag('140').download()
+    
+    temp_file = io.BytesIO()
+    with open(file_path, 'rb') as fo:
+        temp_file.write(fo.read())
+    # (after writing, cursor will be at last byte, so move it to start)
+    temp_file.seek(0)
+    os.remove(file_path)
+    return send_file(temp_file, as_attachment=True, download_name='song.mp3' )
 
 @app.route("/search_song", methods=["POST"])
 def search_song():
@@ -66,19 +72,20 @@ def search_song():
     song = dict()
     i=0
     for item in lista: 
-        if 'title' in item:
-            title = item
-            response[title] = {'title': clean_title(title)}
-        if 'thumbnails' in item:
-            thumb = item
-            response[title]['thumb'] = clean_thumb(thumb)
-        if '/watch' in item:
-            watch = item 
-            response[title]['watch'] = clean_watch(watch)    
-        
+        if 'title' in item or 'thumbnails' in item or '/watch' in item:
+            if 'title' in item:
+                title = item
+                response[title] = {'title': clean_title(title)}
+            if 'thumbnails' in item:
+                thumb = item
+                response[title]['thumb'] = clean_thumb(thumb)
+                
+            if '/watch' in item:
+                watch = item 
+                response[title]['watch'] = clean_watch(watch)    
 
-        
-    return json.dumps(response)
+    result = list(response.values())
+    return json.dumps(result)
 
     
     
@@ -105,7 +112,7 @@ def clean_watch(watch):
         watch = watch.replace(":", "")
         watch = watch.replace('"\"', "")
         watch = watch.replace('"', "")
-        return 'https://www.youtube.com/' + watch
+        return 'https://www.youtube.com' + watch
 
 def clean_thumb(thumb):
     if 'thumbnails' in thumb:
@@ -123,4 +130,4 @@ def clean_thumb(thumb):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='192.168.0.7')
+    app.run(debug=True)
