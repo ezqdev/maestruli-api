@@ -15,16 +15,19 @@ cors = CORS(app)
 
 @app.route("/download", methods=["POST"])
 def download():
-    yt = YouTube(request.json['url'])
-    file_path = yt.streams.filter(only_audio=True).get_by_itag('140').download()
-    
-    temp_file = io.BytesIO()
-    with open(file_path, 'rb') as fo:
-        temp_file.write(fo.read())
-    # (after writing, cursor will be at last byte, so move it to start)
-    temp_file.seek(0)
-    os.remove(file_path)
-    return send_file(temp_file, as_attachment=True, download_name='song.mp3' )
+    try:
+        yt = YouTube(request.json['url'])
+        file_path = yt.streams.filter(only_audio=True).get_by_itag('140').download()
+        
+        temp_file = io.BytesIO()
+        with open(file_path, 'rb') as fo:
+            temp_file.write(fo.read())
+        # (after writing, cursor will be at last byte, so move it to start)
+        temp_file.seek(0)
+        os.remove(file_path)
+        return send_file(temp_file, as_attachment=True, download_name='song.mp3' )
+    except Exception as e:
+        print(f"Error downloading..: {e}") 
 
 @app.route("/search_song", methods=["POST"])
 def search_song():
