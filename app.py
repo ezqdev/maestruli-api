@@ -18,6 +18,7 @@ def download():
     try:
         yt = YouTube(request.json['url'])
         file_path = yt.streams.filter(only_audio=True).get_by_itag('140').download()
+        print(f"file_path:{file_path}")
         """
         temp_file = io.BytesIO()
         with open(file_path, 'rb') as fo:
